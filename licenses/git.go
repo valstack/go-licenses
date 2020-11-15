@@ -93,5 +93,5 @@ func gitRemoteURL(repoPath string, remoteName string) (*url.URL, error) {
 		}
 		return u, nil
 	}
-	return nil, fmt.Errorf("the Git remote %q does not have a valid URL", remoteName)
+	return nil, fmt.Errorf("the Git remote %q  %v does not have a valid URL", remoteName, repoPath)
 }

@@ -16,8 +16,10 @@ package licenses
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"go/build"
+	"io/ioutil"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -33,6 +35,7 @@ var (
 	repoPathPrefixes = map[string]string{
 		"github.com":    "blob/master/",
 		"bitbucket.org": "src/master/",
+		"gitlab.com":    "-/blob/master/",
 	}
 )
 
@@ -169,6 +172,8 @@ func (l *Library) String() string {
 	return l.Name()
 }
 
+var packageMapping map[string]string
+
 // FileURL attempts to determine the URL for a file in this library.
 // This only works for certain supported package prefixes, such as github.com,
 // bitbucket.org and googlesource.com. Prefer GitRepo.FileURL() if possible.
@@ -178,6 +183,20 @@ func (l *Library) FileURL(filePath string) (*url.URL, error) {
 		return nil, err
 	}
 	nameParts := strings.SplitN(l.Name(), "/", 4)
+	if len(nameParts) < 3 {
+		if packageMapping == nil {
+			data, err := ioutil.ReadFile("./go-package-mapping.json")
+			if err == nil {
+				json.Unmarshal(data, &packageMapping)
+			}
+		}
+		if packageMapping != nil {
+			if k, ok := packageMapping[l.Name()]; ok {
+				nameParts = strings.Split(k, "/")
+			}
+		}
+
+	}
 	if len(nameParts) < 3 {
 		return nil, fmt.Errorf("cannot determine URL for %q package", l.Name())
 	}
@@ -201,5 +220,5 @@ func isStdLib(pkg *packages.Package) bool {
 	if len(pkg.GoFiles) == 0 {
 		return false
 	}
-	return strings.HasPrefix(pkg.GoFiles[0], build.Default.GOROOT)
+	return strings.HasPrefix(pkg.GoFiles[0], build.Default.GOROOT) || strings.Contains(pkg.GoFiles[0], "golang.org")
 }
